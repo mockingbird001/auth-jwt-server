@@ -1,52 +1,13 @@
-import { UserModel } from "./entities/User";
-import { ApolloServer, gql } from "apollo-server-express";
+import { ApolloServer } from "apollo-server-express";
+import { buildSchema } from "type-graphql";
+import { AuthResolvers } from "./resolvers/AuthResolvers";
 
-const typeDefs = gql`
-  type User {
-    id: String!
-    username: String!
-    email: String!
-    password: String!
-  }
+export default async () => {
+  const schema = await buildSchema({
+    resolvers: [AuthResolvers],
+    emitSchemaFile: { path: "./src/schema.graphql" },
+    validate: false,
+  });
 
-  type Query {
-    users: [User]!
-  }
-
-  type Mutation {
-    createUser(username: String!, email: String!, password: String!): User
-  }
-`;
-
-interface InputAtgs {
-  username: string;
-  email: string;
-  password: string;
-}
-
-const resolvers = {
-  Query: {
-    users: () => UserModel.find(),
-  },
-  Mutation: {
-    createUser: async (_: any, args: InputAtgs) => {
-      try {
-        const { username, email, password } = args;
-
-        const newUser = await UserModel.create({
-          username,
-          email,
-          password,
-        });
-
-        return newUser;
-      } catch (error) {
-        throw error;
-      }
-    },
-  },
-};
-
-export default () => {
-  return new ApolloServer({ typeDefs, resolvers });
+  return new ApolloServer({ schema });
 };
