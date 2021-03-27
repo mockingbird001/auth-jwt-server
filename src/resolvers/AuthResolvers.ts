@@ -20,28 +20,44 @@ export class AuthResolvers {
     }
   }
 
-  @Mutation(() => User)
-  async signUp(
+  @Query(() => User, { nullable: true })
+  async me(@Arg("userId") userId: string): Promise<User | null> {
+    try {
+      const user = await UserModel.findById(userId);
+
+      if (!user) throw new Error("User nor found.");
+
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Mutation(() => User, { nullable: true })
+  async signup(
     @Arg("username") username: string,
     @Arg("email") email: string,
     @Arg("password") password: string,
     @Ctx() { res }: AppContext
-  ) {
+  ): Promise<User | null> {
     try {
       if (!username) throw new Error("Username is required.");
+      if (!email) throw new Error("Email is required.");
+      if (!password) throw new Error("Password is required.");
+
+      const user = await UserModel.findOne({ email });
+
+      if (user) throw Error("Email already in use, please sign in instead.");
 
       const isUsernameValid = validateUsername(username);
 
       if (!isUsernameValid)
         throw new Error("Username must be between 3 - 60 characters.");
 
-      if (!email) throw new Error("Email is required.");
-
       const isEmailValid = validateEmail(email);
 
       if (!isEmailValid) throw new Error("Email is invalid.");
 
-      if (!password) throw new Error("Password is required.");
       const isPasswordValid = validatePassword(password);
 
       if (!isPasswordValid)
@@ -60,7 +76,36 @@ export class AuthResolvers {
       const token = createToken(newUser.id, newUser.tokenVersion);
 
       sendToken(res, token);
+
       return newUser;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Mutation(() => User, { nullable: true })
+  async signin(
+    @Arg("email") email: string,
+    @Arg("password") password: string,
+    @Ctx() { res }: AppContext
+  ): Promise<User | null> {
+    try {
+      if (!email) throw new Error("Email is required.");
+      if (!password) throw new Error("Password is required.");
+
+      const user = await UserModel.findOne({ email });
+
+      if (!user) throw Error("Email not found.");
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordValid) throw new Error("Email or Password is valid.");
+
+      const token = createToken(user.id, user.tokenVersion);
+
+      sendToken(res, token);
+
+      return user;
     } catch (error) {
       throw error;
     }
