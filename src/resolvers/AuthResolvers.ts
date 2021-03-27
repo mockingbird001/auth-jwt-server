@@ -1,5 +1,13 @@
-import { Resolver, Query, Mutation, Arg } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx } from "type-graphql";
+import bcrypt from "bcryptjs";
 import { User, UserModel } from "../entities/User";
+import {
+  validateUsername,
+  validateEmail,
+  validatePassword,
+} from "../utils/validate";
+import { createToken, sendToken } from "../utils/tokenHandler";
+import { AppContext } from "../types";
 
 @Resolver()
 export class AuthResolvers {
@@ -13,20 +21,45 @@ export class AuthResolvers {
   }
 
   @Mutation(() => User)
-  async createUser(
+  async signUp(
     @Arg("username") username: string,
     @Arg("email") email: string,
-    @Arg("password") password: string
+    @Arg("password") password: string,
+    @Ctx() { res }: AppContext
   ) {
     try {
+      if (!username) throw new Error("Username is required.");
+
+      const isUsernameValid = validateUsername(username);
+
+      if (!isUsernameValid)
+        throw new Error("Username must be between 3 - 60 characters.");
+
+      if (!email) throw new Error("Email is required.");
+
+      const isEmailValid = validateEmail(email);
+
+      if (!isEmailValid) throw new Error("Email is invalid.");
+
+      if (!password) throw new Error("Password is required.");
+      const isPasswordValid = validatePassword(password);
+
+      if (!isPasswordValid)
+        throw new Error("Password must be between 6 - 50 characters.");
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const newUser = await UserModel.create({
         username,
         email,
-        password,
+        password: hashedPassword,
       });
 
       await newUser.save();
 
+      const token = createToken(newUser.id, newUser.tokenVersion);
+
+      sendToken(res, token);
       return newUser;
     } catch (error) {
       throw error;
