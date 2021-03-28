@@ -2,6 +2,7 @@ import express from "express";
 import monggoose from "mongoose";
 import { config } from "dotenv";
 import createServer from "./createServer";
+import cookieParser from "cookie-parser";
 config();
 
 const { PORT, DB_USER, DB_PASSWORD, DB_ENDPOINT, DB_NAME } = process.env;
@@ -19,6 +20,7 @@ const startServer = async () => {
     );
 
     const app = express();
+    app.use(cookieParser());
 
     const server = await createServer();
 

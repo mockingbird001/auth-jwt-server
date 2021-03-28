@@ -1,3 +1,5 @@
+import { AppContext } from "./types/index";
+import { verifyToken } from "./utils/tokenHandler";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { AuthResolvers } from "./resolvers/AuthResolvers";
@@ -11,7 +13,27 @@ export default async () => {
 
   return new ApolloServer({
     schema,
-    context: ({ req, res }) => {
+    context: ({ req, res }: AppContext) => {
+      const token = req.cookies[process.env.COOKIE_NAME!];
+
+      if (token) {
+        try {
+          const decodedToken = verifyToken(token) as {
+            userId: string;
+            tokenVersion: number;
+            iat: number;
+            exp: number;
+          } | null;
+
+          if (decodedToken) {
+            req.userId = decodedToken.userId;
+            req.tokenVersion = decodedToken.tokenVersion;
+          }
+        } catch (error) {
+          req.userId = undefined;
+          req.tokenVersion = undefined;
+        }
+      }
       return { req, res };
     },
   });
