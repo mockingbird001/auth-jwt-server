@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import {
   Resolver,
   Query,
@@ -17,6 +18,9 @@ import {
 import { createToken, sendToken } from "../utils/tokenHandler";
 import { AppContext } from "../types";
 import { isAuthenticated } from "../utils/authHandler";
+import Sendgrid, { MailDataRequired } from "@sendgrid/mail";
+
+Sendgrid.setApiKey(process.env.SENDGRID_API_KEY!);
 
 @ObjectType()
 export class ResponseMessage {
@@ -38,7 +42,7 @@ export class AuthResolvers {
   @Query(() => User, { nullable: true })
   async me(@Ctx() { req }: AppContext): Promise<User | null> {
     try {
-      if (!req.userId) throw new Error("PLease log in to proceed.");
+      if (!req.userId) throw new Error("Please log in to proceed.");
 
       const user = await isAuthenticated(req.userId, req.tokenVersion);
 
@@ -62,7 +66,8 @@ export class AuthResolvers {
 
       const user = await UserModel.findOne({ email });
 
-      if (user) throw Error("Email already in use, please sign in instead.");
+      if (user)
+        throw new Error("Email already in use, please sign in instead.");
 
       const isUsernameValid = validateUsername(username);
 
@@ -110,11 +115,11 @@ export class AuthResolvers {
 
       const user = await UserModel.findOne({ email });
 
-      if (!user) throw Error("Email not found.");
+      if (!user) throw new Error("Email not found.");
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
-      if (!isPasswordValid) throw new Error("Email or Password is valid.");
+      if (!isPasswordValid) throw new Error("Email or password is invalid");
 
       const token = createToken(user.id, user.tokenVersion);
 
@@ -140,7 +145,52 @@ export class AuthResolvers {
 
       res.clearCookie(process.env.COOKIE_NAME!);
 
-      return { message: "SignOut jwt" };
+      return { message: "clear jwt" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Mutation(() => ResponseMessage, { nullable: true })
+  async requestResetPassword(
+    @Arg("email") email: string
+  ): Promise<ResponseMessage | null> {
+    try {
+      if (!email) throw new Error("Email is required.");
+
+      const user = await UserModel.findOne({ email });
+
+      if (!user) throw new Error("Email not found.");
+
+      const resetPasswordToken = randomBytes(16).toString("hex");
+      const resetPasswordTokenExpiry = Date.now() + 1000 * 60 * 30;
+
+      const updatedUser = await UserModel.findOneAndUpdate(
+        { email },
+        { resetPasswordToken, resetPasswordTokenExpiry },
+        { new: true }
+      );
+
+      if (!updatedUser) throw new Error("Sorry, cannot proceed.");
+
+      const message: MailDataRequired = {
+        from: "hide0mockingbird@gmail.com",
+        to: email,
+        subject: "Reset password",
+        html: `
+          <div>
+            <p>Please click below link to reset your password.</p>
+            <a href='http://localhost:5000/?resetToken=${resetPasswordToken}' target='blank'>Click to reset password</a>
+          </div>
+        `,
+      };
+
+      const response = await Sendgrid.send(message);
+
+      if (!response || response[0]?.statusCode !== 202)
+        throw new Error("Sorry, cannot proceed.");
+
+      return { message: "Please check your email to reset password" };
     } catch (error) {
       throw error;
     }
