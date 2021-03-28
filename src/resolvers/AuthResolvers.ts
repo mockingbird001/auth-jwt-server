@@ -45,7 +45,7 @@ export class AuthResolvers {
     try {
       if (!req.userId) throw new Error("Please log in to proceed.");
 
-      const user = await isAuthenticated(req.userId, req.tokenVersion);
+      const user = await isAuthenticated(req);
 
       return user;
     } catch (error) {
@@ -246,9 +246,7 @@ export class AuthResolvers {
     @Ctx() { req }: AppContext
   ): Promise<User | null> {
     try {
-      if (!req.userId) throw new Error("Please login to proceed");
-
-      const admin = await isAuthenticated(req.userId, req.tokenVersion);
+      const admin = await isAuthenticated(req);
 
       const isSuperAdmin = admin.roles.includes(RoleOptions.superAdmin);
 
@@ -274,9 +272,7 @@ export class AuthResolvers {
     @Ctx() { req }: AppContext
   ): Promise<ResponseMessage | null> {
     try {
-      if (!req.userId) throw new Error("Please login to proceed.");
-
-      const admin = await isAuthenticated(req.userId, req.tokenVersion);
+      const admin = await isAuthenticated(req);
 
       const isSuperAdmin = admin.roles.includes(RoleOptions.superAdmin);
 
