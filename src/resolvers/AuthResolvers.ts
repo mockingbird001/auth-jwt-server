@@ -32,9 +32,17 @@ export class ResponseMessage {
 @Resolver()
 export class AuthResolvers {
   @Query(() => [User], { nullable: "items" })
-  async users(): Promise<User[] | null> {
+  async users(@Ctx() { req }: AppContext): Promise<User[] | null> {
     try {
-      return UserModel.find();
+      const user = await isAuthenticated(req);
+
+      const isAuthhorization =
+        user.roles.includes(RoleOptions.superAdmin) ||
+        user.roles.includes(RoleOptions.admin);
+
+      if (!isAuthhorization) throw new Error("No Authorization");
+
+      return UserModel.find().sort({ createAt: "desc" });
     } catch (error) {
       throw error;
     }
@@ -43,8 +51,6 @@ export class AuthResolvers {
   @Query(() => User, { nullable: true })
   async me(@Ctx() { req }: AppContext): Promise<User | null> {
     try {
-      if (!req.userId) throw new Error("Please log in to proceed.");
-
       const user = await isAuthenticated(req);
 
       return user;
