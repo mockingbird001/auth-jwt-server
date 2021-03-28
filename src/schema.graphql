@@ -10,6 +10,7 @@ scalar DateTime
 
 type Mutation {
   requestResetPassword(email: String!): ResponseMessage
+  resetPassword(password: String!, token: String!): ResponseMessage
   signin(email: String!, password: String!): User
   signout: ResponseMessage
   signup(email: String!, password: String!, username: String!): User
