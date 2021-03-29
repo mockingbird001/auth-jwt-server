@@ -58,7 +58,10 @@ const startServer = async () => {
 
     const server = await createServer();
 
-    server.applyMiddleware({ app });
+    server.applyMiddleware({
+      app,
+      cors: { origin: "http://localhost:3000", credentials: true },
+    });
 
     app.listen({ port: PORT }, () => {
       console.log(
