@@ -4,8 +4,13 @@ import express from "express";
 import monggoose from "mongoose";
 import createServer from "./createServer";
 import cookieParser from "cookie-parser";
+import passport from "passport";
+import { PassportFB } from "./passport";
+import { FBAuthenticate } from "./passport/socialMediaAuth";
 
 const { PORT, DB_USER, DB_PASSWORD, DB_ENDPOINT, DB_NAME } = process.env;
+
+PassportFB();
 
 const startServer = async () => {
   try {
@@ -21,6 +26,18 @@ const startServer = async () => {
 
     const app = express();
     app.use(cookieParser());
+
+    app.get("/auth/facebook", passport.authenticate("facebook"));
+
+    app.get(
+      "/auth/facebook/callback",
+      passport.authenticate("facebook", {
+        session: false,
+        failureRedirect: "http://localhost:3000",
+        scope: ["profile", "email"],
+      }),
+      FBAuthenticate
+    );
 
     const server = await createServer();
 
