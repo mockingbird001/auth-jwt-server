@@ -40,3 +40,41 @@ export const FBAuthenticate = async (req: AppRequest, res: Response) => {
     res.redirect("http://localhost:3000");
   }
 };
+
+export const GoogleAuthenticate = async (req: AppRequest, res: Response) => {
+  if (!req.userProfile) return;
+
+  const { id, emails, displayName, provider } = req.userProfile;
+
+  try {
+    const user = await UserModel.findOne({ googleId: id });
+    let token: string;
+
+    if (!user) {
+      const newUser = await UserModel.create<
+        Pick<User, "username" | "email" | "googleId" | "password">
+      >({
+        username: displayName,
+        email: (emails && emails[0].value) || provider,
+        googleId: id,
+        password: provider,
+      });
+
+      await newUser.save();
+
+      token = createToken(newUser.id, newUser.tokenVersion);
+
+      sendToken(res, token);
+
+      res.redirect("http://localhost:3000/dashboard");
+    } else {
+      token = createToken(user.id, user.tokenVersion);
+
+      sendToken(res, token);
+
+      res.redirect("http://localhost:3000/dashboard");
+    }
+  } catch (error) {
+    res.redirect("http://localhost:3000");
+  }
+};
