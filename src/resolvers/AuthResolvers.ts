@@ -264,6 +264,12 @@ export class AuthResolvers {
 
       user.roles = newRoles;
 
+      if (newRoles.includes(RoleOptions.client)) {
+        user.roles = [...newRoles, RoleOptions.client];
+      } else {
+        user.roles = newRoles;
+      }
+
       await user.save();
 
       return user;
